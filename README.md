@@ -10,6 +10,7 @@
 
 CodeMentor AI is a full-stack academic project that acts as an AI-assisted coding mentor. It helps users generate code, explain code, debug code, optimize solutions, review code quality, generate documentation, and maintain personal coding history through a secure web workspace.
 
+
 ## 1. Project Objective
 
 The objective of CodeMentor AI is to provide a beginner-friendly coding assistant that can support software development learning and practice. It is designed for college submission, demonstrating full-stack development, authentication, database integration, AI prompt handling, static analysis, and responsive UI design.
@@ -273,14 +274,7 @@ Additional limitations:
 
 ## 17. Screenshots
 
-Add project screenshots using these placeholder filenames:
-
-- `docs/screenshots/login-page.png`
-- `docs/screenshots/workspace-home.png`
-- `docs/screenshots/sql-safety-mode.png`
-- `docs/screenshots/review-rubric.png`
-- `docs/screenshots/history-sidebar.png`
-- `docs/screenshots/download-report.png`
+<img width="377" height="630" alt="Screenshot 2026-06-28 223133" src="https://github.com/user-attachments/assets/62d37027-b39e-4745-a620-6ee3d17be25f" />
 
 ## 18. Testing Instructions
 
