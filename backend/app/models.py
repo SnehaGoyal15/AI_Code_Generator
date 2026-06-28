@@ -1,55 +1,71 @@
-"""SQLAlchemy models for CodeMentor AI."""
+"""MongoDB document helpers for CodeMentor AI."""
+
+from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
-
-from .database import Base
+from .database import to_public_id
 
 
-class User(Base):
-    """Store user profile information for future authentication work."""
-
-    __tablename__ = "users"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    login_otp_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    login_otp_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+def _normalize_datetime(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    return datetime.utcnow()
 
 
-class CodeHistory(Base):
-    """Persist prompts, outputs, and analysis for later review."""
+def normalize_user_doc(document: dict[str, Any] | None, include_private: bool = False) -> dict[str, Any] | None:
+    if not document:
+        return None
 
-    __tablename__ = "code_history"
+    normalized = {
+        "id": to_public_id(document.get("_id")),
+        "name": document.get("name", ""),
+        "email": document.get("email", ""),
+        "created_at": _normalize_datetime(document.get("created_at")),
+    }
+    if include_private:
+        normalized.update(
+            {
+                "password_hash": document.get("password_hash"),
+                "login_otp_hash": document.get("login_otp_hash"),
+                "login_otp_expires_at": document.get("login_otp_expires_at"),
+            }
+        )
+    return normalized
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
-    prompt: Mapped[str] = mapped_column(Text, nullable=False)
-    language: Mapped[str] = mapped_column(String(64), nullable=False)
-    action_type: Mapped[str] = mapped_column(String(64), nullable=False)
-    input_code: Mapped[str | None] = mapped_column(Text, nullable=True)
-    generated_code: Mapped[str | None] = mapped_column(Text, nullable=True)
-    explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
-    time_complexity: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    space_complexity: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    suggestions: Mapped[str | None] = mapped_column(Text, nullable=True)
-    quality_breakdown: Mapped[str | None] = mapped_column(Text, nullable=True)
-    top_improvements: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+def normalize_history_doc(document: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not document:
+        return None
+
+    return {
+        "id": to_public_id(document.get("_id")),
+        "user_id": to_public_id(document.get("user_id")),
+        "prompt": document.get("prompt", ""),
+        "language": document.get("language", ""),
+        "action_type": document.get("action_type", ""),
+        "input_code": document.get("input_code"),
+        "generated_code": document.get("generated_code"),
+        "explanation": document.get("explanation"),
+        "time_complexity": document.get("time_complexity"),
+        "space_complexity": document.get("space_complexity"),
+        "suggestions": document.get("suggestions"),
+        "quality_breakdown": document.get("quality_breakdown"),
+        "top_improvements": document.get("top_improvements"),
+        "created_at": _normalize_datetime(document.get("created_at")),
+    }
 
 
-class Feedback(Base):
-    """Capture ratings for generated history items."""
+def normalize_feedback_doc(document: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not document:
+        return None
 
-    __tablename__ = "feedback"
+    return {
+        "id": to_public_id(document.get("_id")),
+        "history_id": to_public_id(document.get("history_id")),
+        "rating": document.get("rating"),
+        "comment": document.get("comment"),
+        "created_at": _normalize_datetime(document.get("created_at")),
+    }
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    history_id: Mapped[int] = mapped_column(ForeignKey("code_history.id"), nullable=False, index=True)
-    rating: Mapped[int] = mapped_column(Integer, nullable=False)
-    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

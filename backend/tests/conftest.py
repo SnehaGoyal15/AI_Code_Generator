@@ -8,9 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-TEST_DB_PATH = Path("/private/tmp/codementor_ai_tests.db")
-
-os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
+os.environ["MONGO_URI"] = "memory://codementor-ai-tests"
+os.environ["MONGO_DB_NAME"] = "codementor_ai_tests"
 os.environ["JWT_SECRET"] = "codementor-ai-test-secret-key-123456"
 os.environ["JWT_ALGORITHM"] = "HS256"
 os.environ["JWT_EXPIRES_IN_MINUTES"] = "60"
@@ -21,9 +20,6 @@ os.environ["BREVO_FROM"] = ""
 os.environ["LOGIN_OTP_EXPIRES_IN_MINUTES"] = "10"
 os.environ["FRONTEND_ORIGINS"] = "http://localhost:5173"
 
-if TEST_DB_PATH.exists():
-    TEST_DB_PATH.unlink()
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import ai_service as ai_service_module
@@ -33,11 +29,9 @@ from app.main import app
 
 @pytest.fixture(autouse=True)
 def reset_database():
-    database_module.Base.metadata.drop_all(bind=database_module.engine)
-    database_module.Base.metadata.create_all(bind=database_module.engine)
-    database_module.ensure_sqlite_history_columns()
+    database_module.reset_storage()
     yield
-    database_module.Base.metadata.drop_all(bind=database_module.engine)
+    database_module.reset_storage()
 
 
 @pytest.fixture

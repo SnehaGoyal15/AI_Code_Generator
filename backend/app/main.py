@@ -4,8 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .database import Base, engine, ensure_sqlite_history_columns, ensure_sqlite_user_columns
-from .models import CodeHistory, Feedback, User  # noqa: F401 - ensures model registration
+from .database import initialize_storage
 from .routers.ai import router as ai_router
 from .routers.auth import router as auth_router
 from .routers.history import router as history_router
@@ -26,10 +25,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup() -> None:
-    # Create the SQLite tables automatically whenever the backend starts.
-    Base.metadata.create_all(bind=engine)
-    ensure_sqlite_history_columns()
-    ensure_sqlite_user_columns()
+    # Create Mongo indexes and verify the configured storage backend.
+    initialize_storage()
 
 
 @app.get("/")

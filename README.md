@@ -33,8 +33,8 @@ The objective of CodeMentor AI is to provide a beginner-friendly coding assistan
 
 - Frontend: React, Vite, plain CSS, Monaco Editor
 - Backend: FastAPI
-- Database: SQLite
-- ORM: SQLAlchemy
+- Database: MongoDB
+- Driver: PyMongo
 - Authentication: JWT, Passlib with bcrypt
 - Testing: pytest, FastAPI TestClient
 
@@ -46,7 +46,7 @@ CodeMentor AI uses a clean client-server architecture:
 - The frontend sends authenticated requests to the FastAPI backend.
 - The backend validates requests, builds structured prompts, and calls the configured AI provider.
 - AI responses are validated as JSON before being returned.
-- The backend stores each action in SQLite under the authenticated user account.
+- The backend stores each action in MongoDB under the authenticated user account.
 - The frontend retrieves the current user history and restores saved sessions from the backend.
 
 High-level flow:
@@ -55,7 +55,7 @@ High-level flow:
 User -> React UI -> FastAPI API -> AI Provider
                      |               |
                      v               v
-                 SQLite history   JSON validation
+                 MongoDB history   JSON validation
 ```
 
 ## 6. Folder Structure
@@ -112,6 +112,7 @@ cp .env.example .env
 ```
 
 Edit `backend/.env` and add the required environment variables described below.
+If you want local demo mode without a running MongoDB server, set `MONGO_URI=memory://codementor-ai`.
 
 ### Frontend setup
 
@@ -127,7 +128,8 @@ cp .env.example .env
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | SQLite connection string |
+| `MONGO_URI` | MongoDB connection string |
+| `MONGO_DB_NAME` | MongoDB database name |
 | `FRONTEND_ORIGINS` | Allowed CORS origins |
 | `GEMINI_MODEL` | Gemini model name, defaults to `gemini-2.5-flash` |
 | `GEMINI_API_KEY` | Gemini API key |
@@ -274,7 +276,7 @@ Add project screenshots using these placeholder filenames:
 
 ## 18. Testing Instructions
 
-The backend includes deterministic automated tests with a separate SQLite test database and mocked AI calls.
+The backend includes deterministic automated tests with an in-memory Mongo fallback and mocked AI calls.
 
 ```bash
 cd code-mentor-ai/backend

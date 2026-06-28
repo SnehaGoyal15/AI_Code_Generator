@@ -1,31 +1,31 @@
 """CRUD endpoints for code history."""
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy.orm import Session
 
-from .. import models, schemas
+from .. import schemas
 from ..auth import get_current_user
-from ..database import get_db
+from ..database import get_db, to_storage_id
+from ..models import normalize_history_doc
 from ..services.history_service import create_history as persist_history
 
 router = APIRouter(prefix="/history", tags=["history"])
 
 
-def _owned_history_query(db: Session, user_id: int):
-    return db.query(models.CodeHistory).filter(models.CodeHistory.user_id == user_id)
+def _owned_history_query(db, user_id: str):
+    return db["code_history"].find({"user_id": to_storage_id(user_id)})
 
 
 @router.post("", response_model=schemas.CodeHistoryRead, status_code=status.HTTP_201_CREATED)
 def create_history(
     payload: schemas.CodeHistoryCreate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-) -> models.CodeHistory:
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> dict:
     """Create a code history record and return the saved row."""
     return persist_history(
         db,
         schemas.CodeHistoryCreate(
-            user_id=current_user.id,
+            user_id=current_user["id"],
             prompt=payload.prompt,
             language=payload.language,
             action_type=payload.action_type,
@@ -43,41 +43,41 @@ def create_history(
 
 @router.get("", response_model=list[schemas.CodeHistoryRead])
 def list_history(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-) -> list[models.CodeHistory]:
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> list[dict]:
     """Return newest history items first."""
-    return (
-        _owned_history_query(db, current_user.id)
-        .order_by(models.CodeHistory.created_at.desc())
-        .all()
-    )
+    return [
+        normalized
+        for document in _owned_history_query(db, current_user["id"]).sort("created_at", -1)
+        if (normalized := normalize_history_doc(document)) is not None
+    ]
 
 
 @router.get("/{history_id}", response_model=schemas.CodeHistoryRead)
 def get_history(
-    history_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-) -> models.CodeHistory:
+    history_id: str,
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> dict:
     """Fetch a single history record or raise 404 if it does not exist."""
-    record = _owned_history_query(db, current_user.id).filter(models.CodeHistory.id == history_id).first()
-    if record is None:
+    record = db["code_history"].find_one({"_id": to_storage_id(history_id), "user_id": to_storage_id(current_user["id"])})
+    normalized = normalize_history_doc(record)
+    if normalized is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="History record not found.")
-    return record
+    return normalized
 
 
 @router.delete("/{history_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_history(
-    history_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    history_id: str,
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
 ) -> Response:
     """Delete a history record and return no content."""
-    record = _owned_history_query(db, current_user.id).filter(models.CodeHistory.id == history_id).first()
-    if record is None:
+    result = db["code_history"].delete_one({"_id": to_storage_id(history_id), "user_id": to_storage_id(current_user["id"])})
+    if getattr(result, "deleted_count", 0) == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="History record not found.")
 
-    db.delete(record)
-    db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+

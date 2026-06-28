@@ -8,7 +8,7 @@ Show the project as a polished academic full-stack application with authenticati
 
 Say:
 
-> "This is CodeMentor AI, a full-stack coding assistant built with React, FastAPI, SQLite, and Monaco Editor. It can generate, explain, debug, optimize, review, and document code while keeping each user's history secure."
+> "This is CodeMentor AI, a full-stack coding assistant built with React, FastAPI, MongoDB, and Monaco Editor. It can generate, explain, debug, optimize, review, and document code while keeping each user's history secure."
 
 Click:
 
@@ -110,7 +110,7 @@ Then say:
 
 Say:
 
-> "In summary, CodeMentor AI combines AI assistance, secure authentication, SQLite history, code review rubrics, and SQL safety into one academic full-stack project."
+> "In summary, CodeMentor AI combines AI assistance, OTP-based authentication, MongoDB history, code review rubrics, and SQL safety into one academic full-stack project."
 
 Finish by highlighting:
 
@@ -119,4 +119,3 @@ Finish by highlighting:
 - Database
 - Testing
 - Security
-

@@ -30,7 +30,11 @@ Creates a new account and returns a JWT access token.
 
 ### `POST /auth/login`
 
-Logs in an existing user and returns a JWT access token.
+Starts the OTP login flow by verifying credentials and sending a one-time code to the user's email.
+
+### `POST /auth/verify-login-otp`
+
+Verifies the OTP and returns a JWT access token.
 
 ### `GET /auth/me`
 
@@ -60,7 +64,7 @@ These endpoints:
 - validate the request
 - call the configured AI provider
 - validate JSON output
-- save history to SQLite
+- save history to MongoDB
 - return the `history_id`
 
 ## History
@@ -87,4 +91,3 @@ Deletes one history record if it belongs to the authenticated user.
 - Unauthorized requests return `401`
 - Accessing another user's history returns `404`
 - SQL requests are treated as text-only analysis
-

@@ -4,17 +4,16 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import secrets
-from typing import Annotated
+from typing import Annotated, Any
 
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .database import get_db
-from . import models
+from .database import get_db, to_storage_id
+from .models import normalize_user_doc
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -32,30 +31,36 @@ def generate_login_otp() -> str:
     return f"{secrets.randbelow(1_000_000):06d}"
 
 
-def set_login_otp(user: models.User) -> tuple[str, datetime]:
+def set_login_otp(user: dict[str, Any]) -> tuple[str, datetime]:
     settings = get_settings()
     otp = generate_login_otp()
     expires_at = datetime.utcnow() + timedelta(minutes=settings.login_otp_expires_in_minutes)
-    user.login_otp_hash = hash_password(otp)
-    user.login_otp_expires_at = expires_at
+    user["login_otp_hash"] = hash_password(otp)
+    user["login_otp_expires_at"] = expires_at
     return otp, expires_at
 
 
-def clear_login_otp(user: models.User) -> None:
-    user.login_otp_hash = None
-    user.login_otp_expires_at = None
+def clear_login_otp(user: dict[str, Any]) -> None:
+    user["login_otp_hash"] = None
+    user["login_otp_expires_at"] = None
 
 
-def verify_login_otp(user: models.User, otp: str) -> bool:
-    expires_at = user.login_otp_expires_at
-    if expires_at is None or user.login_otp_hash is None:
+def verify_login_otp(user: dict[str, Any], otp: str) -> bool:
+    expires_at = user.get("login_otp_expires_at")
+    login_otp_hash = user.get("login_otp_hash")
+    if expires_at is None or login_otp_hash is None:
         return False
+    if isinstance(expires_at, str):
+        try:
+            expires_at = datetime.fromisoformat(expires_at)
+        except ValueError:
+            return False
     if expires_at < datetime.utcnow():
         return False
-    return verify_password(otp, user.login_otp_hash)
+    return verify_password(otp, login_otp_hash)
 
 
-def create_access_token(user_id: int, email: str) -> str:
+def create_access_token(user_id: str, email: str) -> str:
     settings = get_settings()
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expires_in_minutes)
     payload = {
@@ -79,8 +84,8 @@ def decode_access_token(token: str) -> dict:
 
 def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-    db: Session = Depends(get_db),
-) -> models.User:
+    db=Depends(get_db),
+) -> dict[str, Any]:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required.")
 
@@ -89,7 +94,11 @@ def get_current_user(
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token.")
 
-    user = db.get(models.User, int(user_id))
+    user = db["users"].find_one({"_id": to_storage_id(user_id)})
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
-    return user
+    public_user = normalize_user_doc(user, include_private=False)
+    if public_user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
+    return public_user
+

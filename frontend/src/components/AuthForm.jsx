@@ -27,17 +27,44 @@ export default function AuthForm({
 
       <form className="auth-form" onSubmit={onSubmit}>
         {!isLogin ? (
-          <label className="field">
-            <span>Name</span>
-            <input
-              type="text"
-              value={values.name}
-              onChange={(event) => onChange('name', event.target.value)}
-              placeholder="Your name"
-              autoComplete="name"
-              required
-            />
-          </label>
+          <>
+            <label className="field">
+              <span>Name</span>
+              <input
+                type="text"
+                value={values.name}
+                onChange={(event) => onChange('name', event.target.value)}
+                placeholder="Your name"
+                autoComplete="name"
+                required
+              />
+            </label>
+
+            <label className="field">
+              <span>Email</span>
+              <input
+                type="email"
+                value={values.email}
+                onChange={(event) => onChange('email', event.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
+                required
+              />
+            </label>
+
+            <label className="field">
+              <span>Password</span>
+              <input
+                type="password"
+                value={values.password}
+                onChange={(event) => onChange('password', event.target.value)}
+                placeholder="Create a strong password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+              />
+            </label>
+          </>
         ) : isOtpStep ? null : (
           <>
             <label className="field">

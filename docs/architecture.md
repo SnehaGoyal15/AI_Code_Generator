@@ -6,7 +6,7 @@ CodeMentor AI follows a simple three-layer architecture:
 
 1. Presentation layer: React + Vite frontend
 2. API layer: FastAPI backend
-3. Data layer: SQLite with SQLAlchemy
+3. Data layer: MongoDB with a lightweight Python client abstraction
 
 ## Frontend Responsibilities
 
@@ -24,7 +24,7 @@ CodeMentor AI follows a simple three-layer architecture:
 - Call the AI provider through a single isolated service
 - Validate AI JSON before using it
 - Run conservative static analysis
-- Save history records to SQLite
+- Save history records to MongoDB
 
 ## Data Flow
 
@@ -36,7 +36,7 @@ User action
   -> Prompt template
   -> AI service
   -> JSON validation
-  -> SQLite save
+  -> MongoDB save
   -> Response to UI
 ```
 
@@ -54,4 +54,3 @@ User action
 - It demonstrates both frontend and backend skills
 - It includes authentication, persistence, and validation
 - It is modular enough to extend later
-

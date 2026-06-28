@@ -42,7 +42,7 @@ class UserLoginOtp(BaseModel):
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: str
     name: str
     email: str
     created_at: datetime
@@ -64,7 +64,7 @@ class LoginOtpChallengeResponse(BaseModel):
 
 
 class AIActionResponse(BaseModel):
-    history_id: int
+    history_id: str
     action_type: str
     code: str | None = None
     explanation: str | None = None
@@ -94,14 +94,14 @@ class CodeHistoryBase(BaseModel):
 
 
 class CodeHistoryCreate(CodeHistoryBase):
-    user_id: int | None = None
+    user_id: str | None = None
 
 
 class CodeHistoryRead(CodeHistoryBase):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
-    user_id: int | None = None
+    id: str
+    user_id: str | None = None
     created_at: datetime
 
 
@@ -118,5 +118,5 @@ class FeedbackCreate(FeedbackBase):
 class FeedbackRead(FeedbackBase):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: str
     created_at: datetime

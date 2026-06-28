@@ -33,7 +33,8 @@ class Settings:
     app_name: str = os.getenv("APP_NAME", "CodeMentor AI")
     environment: str = os.getenv("ENVIRONMENT", "development")
     api_prefix: str = os.getenv("API_PREFIX", "/api")
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./code_mentor_ai.db")
+    mongo_uri: str = os.getenv("MONGO_URI", "memory://codementor-ai")
+    mongo_db_name: str = os.getenv("MONGO_DB_NAME", "codementor_ai")
     frontend_origins: str = os.getenv(
         "FRONTEND_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173",

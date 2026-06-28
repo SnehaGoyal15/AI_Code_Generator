@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from datetime import datetime
 
-from .. import models, schemas
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from .. import schemas
 from ..auth import (
     clear_login_otp,
     create_access_token,
@@ -15,8 +16,9 @@ from ..auth import (
     verify_login_otp,
     verify_password,
 )
-from ..database import get_db
 from ..config import get_settings
+from ..database import get_db, to_storage_id
+from ..models import normalize_user_doc
 from ..services.email_service import send_login_otp
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -29,26 +31,29 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     summary="Register user",
     description="Create a new user account with a hashed password and return a JWT access token.",
 )
-def register(payload: schemas.UserRegister, db: Session = Depends(get_db)) -> schemas.AuthTokenResponse:
+def register(payload: schemas.UserRegister, db=Depends(get_db)) -> schemas.AuthTokenResponse:
+    users = db["users"]
     email = payload.email.strip().lower()
-    existing = db.query(models.User).filter(models.User.email == email).first()
+    existing = users.find_one({"email": email})
     if existing is not None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered.")
 
-    user = models.User(
-        name=payload.name.strip(),
-        email=email,
-        password_hash=hash_password(payload.password),
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    token = create_access_token(user.id, user.email)
+    user_doc = {
+        "name": payload.name.strip(),
+        "email": email,
+        "password_hash": hash_password(payload.password),
+        "login_otp_hash": None,
+        "login_otp_expires_at": None,
+        "created_at": datetime.utcnow(),
+    }
+    result = users.insert_one(user_doc)
+    saved_user = users.find_one({"_id": result.inserted_id})
+    normalized_user = normalize_user_doc(saved_user)
+    token = create_access_token(normalized_user["id"], normalized_user["email"])
     return schemas.AuthTokenResponse(
         access_token=token,
         token_type="bearer",
-        user=schemas.UserRead.model_validate(user),
+        user=schemas.UserRead.model_validate(normalized_user),
     )
 
 
@@ -58,26 +63,26 @@ def register(payload: schemas.UserRegister, db: Session = Depends(get_db)) -> sc
     summary="Login user",
     description="Verify credentials, send a one-time password to email, and return a login challenge.",
 )
-async def login(payload: schemas.UserLogin, db: Session = Depends(get_db)) -> schemas.LoginOtpChallengeResponse:
+async def login(payload: schemas.UserLogin, db=Depends(get_db)) -> schemas.LoginOtpChallengeResponse:
+    users = db["users"]
     email = payload.email.strip().lower()
-    user = db.query(models.User).filter(models.User.email == email).first()
-    if user is None or not verify_password(payload.password, user.password_hash):
+    user_doc = users.find_one({"email": email})
+    if user_doc is None or not verify_password(payload.password, user_doc["password_hash"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
 
-    otp, _ = set_login_otp(user)
-    db.commit()
-    db.refresh(user)
+    otp, _ = set_login_otp(user_doc)
+    users.replace_one({"_id": user_doc["_id"]}, user_doc)
 
     settings = get_settings()
     email_sent = await send_login_otp(
-        name=user.name,
-        email=user.email,
+        name=user_doc["name"],
+        email=user_doc["email"],
         otp=otp,
         expires_in_minutes=settings.login_otp_expires_in_minutes,
     )
     if not email_sent and settings.environment == "production":
-        clear_login_otp(user)
-        db.commit()
+        clear_login_otp(user_doc)
+        users.replace_one({"_id": user_doc["_id"]}, user_doc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Unable to send login OTP right now. Please try again later.",
@@ -86,7 +91,7 @@ async def login(payload: schemas.UserLogin, db: Session = Depends(get_db)) -> sc
     debug_otp = otp if settings.environment != "production" else None
     return schemas.LoginOtpChallengeResponse(
         message="Login OTP sent",
-        email=user.email,
+        email=user_doc["email"],
         verification_required=True,
         expires_in_minutes=settings.login_otp_expires_in_minutes,
         debug_otp=debug_otp,
@@ -100,23 +105,24 @@ async def login(payload: schemas.UserLogin, db: Session = Depends(get_db)) -> sc
     summary="Verify login OTP",
     description="Verify the login OTP and return a JWT access token for protected requests.",
 )
-def verify_login_otp_route(payload: schemas.UserLoginOtp, db: Session = Depends(get_db)) -> schemas.AuthTokenResponse:
+def verify_login_otp_route(payload: schemas.UserLoginOtp, db=Depends(get_db)) -> schemas.AuthTokenResponse:
+    users = db["users"]
     email = payload.email.strip().lower()
-    user = db.query(models.User).filter(models.User.email == email).first()
-    if user is None:
+    user_doc = users.find_one({"email": email})
+    if user_doc is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid login challenge.")
 
-    if not verify_login_otp(user, payload.otp.strip()):
+    if not verify_login_otp(user_doc, payload.otp.strip()):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired OTP.")
 
-    clear_login_otp(user)
-    db.commit()
-
-    token = create_access_token(user.id, user.email)
+    clear_login_otp(user_doc)
+    users.replace_one({"_id": user_doc["_id"]}, user_doc)
+    normalized_user = normalize_user_doc(user_doc)
+    token = create_access_token(normalized_user["id"], normalized_user["email"])
     return schemas.AuthTokenResponse(
         access_token=token,
         token_type="bearer",
-        user=schemas.UserRead.model_validate(user),
+        user=schemas.UserRead.model_validate(normalized_user),
     )
 
 
@@ -126,5 +132,5 @@ def verify_login_otp_route(payload: schemas.UserLoginOtp, db: Session = Depends(
     summary="Current user",
     description="Return the authenticated user's profile.",
 )
-def me(current_user: models.User = Depends(get_current_user)) -> schemas.UserRead:
+def me(current_user=Depends(get_current_user)) -> schemas.UserRead:
     return schemas.UserRead.model_validate(current_user)

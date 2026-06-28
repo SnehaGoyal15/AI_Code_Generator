@@ -6,9 +6,8 @@ from dataclasses import dataclass
 from typing import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 
-from .. import models, schemas
+from .. import schemas
 from ..ai_service import ai_service, validate_ai_json
 from ..auth import get_current_user
 from ..database import get_db
@@ -153,8 +152,8 @@ def _merge_static_checks(*groups: list[dict[str, str]]) -> list[dict[str, str]]:
 async def _handle_action(
     action_key: str,
     payload: schemas.AIActionRequest,
-    db: Session,
-    current_user: models.User,
+    db,
+    current_user,
 ) -> schemas.AIActionResponse:
     spec = ACTION_SPECS[action_key]
 
@@ -180,7 +179,7 @@ async def _handle_action(
     normalized_result["static_checks"] = _merge_static_checks(input_checks, output_checks)
 
     response_data = schemas.CodeHistoryCreate(
-        user_id=current_user.id,
+        user_id=current_user["id"],
         prompt=prompt_text or (code_text or ""),
         language=language,
         action_type=spec.action_type,
@@ -195,7 +194,7 @@ async def _handle_action(
     )
     record = create_history(db, response_data)
 
-    return _build_response_payload(spec.action_type, record.id, normalized_result)
+    return _build_response_payload(spec.action_type, record["id"], normalized_result)
 
 
 @router.post(
@@ -207,8 +206,8 @@ async def _handle_action(
 )
 async def generate_code_endpoint(
     payload: schemas.AIActionRequest,
-    db: Session = Depends(get_db),
-    current_user: schemas.UserRead = Depends(get_current_user),
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
 ) -> schemas.AIActionResponse:
     return await _handle_action("generate", payload, db, current_user)
 
@@ -222,8 +221,8 @@ async def generate_code_endpoint(
 )
 async def explain_code_endpoint(
     payload: schemas.AIActionRequest,
-    db: Session = Depends(get_db),
-    current_user: schemas.UserRead = Depends(get_current_user),
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
 ) -> schemas.AIActionResponse:
     return await _handle_action("explain", payload, db, current_user)
 
@@ -237,8 +236,8 @@ async def explain_code_endpoint(
 )
 async def debug_code_endpoint(
     payload: schemas.AIActionRequest,
-    db: Session = Depends(get_db),
-    current_user: schemas.UserRead = Depends(get_current_user),
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
 ) -> schemas.AIActionResponse:
     return await _handle_action("debug", payload, db, current_user)
 
@@ -252,8 +251,8 @@ async def debug_code_endpoint(
 )
 async def optimize_code_endpoint(
     payload: schemas.AIActionRequest,
-    db: Session = Depends(get_db),
-    current_user: schemas.UserRead = Depends(get_current_user),
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
 ) -> schemas.AIActionResponse:
     return await _handle_action("optimize", payload, db, current_user)
 
@@ -267,8 +266,8 @@ async def optimize_code_endpoint(
 )
 async def review_code_endpoint(
     payload: schemas.AIActionRequest,
-    db: Session = Depends(get_db),
-    current_user: schemas.UserRead = Depends(get_current_user),
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
 ) -> schemas.AIActionResponse:
     return await _handle_action("review", payload, db, current_user)
 
@@ -282,7 +281,7 @@ async def review_code_endpoint(
 )
 async def documentation_endpoint(
     payload: schemas.AIActionRequest,
-    db: Session = Depends(get_db),
-    current_user: schemas.UserRead = Depends(get_current_user),
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
 ) -> schemas.AIActionResponse:
     return await _handle_action("documentation", payload, db, current_user)
