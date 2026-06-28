@@ -10,6 +10,7 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
+from passlib.hash import bcrypt_sha256
 
 from .config import get_settings
 from .database import get_db, to_storage_id
@@ -20,10 +21,13 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    # bcrypt has a 72-byte input limit, so bcrypt_sha256 safely pre-hashes long passwords.
+    return bcrypt_sha256.hash(password)
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
+    if password_hash.startswith("$bcrypt-sha256$"):
+        return bcrypt_sha256.verify(plain_password, password_hash)
     return pwd_context.verify(plain_password, password_hash)
 
 
@@ -101,4 +105,3 @@ def get_current_user(
     if public_user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
     return public_user
-

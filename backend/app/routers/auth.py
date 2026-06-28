@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from .. import schemas
@@ -22,6 +23,7 @@ from ..models import normalize_user_doc
 from ..services.email_service import send_login_otp
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -80,12 +82,10 @@ async def login(payload: schemas.UserLogin, db=Depends(get_db)) -> schemas.Login
         otp=otp,
         expires_in_minutes=settings.login_otp_expires_in_minutes,
     )
-    if not email_sent and settings.environment == "production":
-        clear_login_otp(user_doc)
-        users.replace_one({"_id": user_doc["_id"]}, user_doc)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Unable to send login OTP right now. Please try again later.",
+    if not email_sent:
+        logger.warning(
+            "Login OTP was generated but could not be delivered for %s.",
+            user_doc["email"],
         )
 
     debug_otp = otp if settings.environment != "production" else None

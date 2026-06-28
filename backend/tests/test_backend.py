@@ -197,6 +197,27 @@ def test_auth_registration_and_login(client):
     assert me_response.json()["email"] == "auth@example.com"
 
 
+def test_registration_accepts_long_passwords(client):
+    long_password = "A" * 80 + "123!"
+    register_response = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Long Password User",
+            "email": "long-password@example.com",
+            "password": long_password,
+        },
+    )
+    assert register_response.status_code == 201, register_response.text
+    assert register_response.json()["user"]["email"] == "long-password@example.com"
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={"email": "long-password@example.com", "password": long_password},
+    )
+    assert login_response.status_code == 200, login_response.text
+    assert login_response.json()["verification_required"] is True
+
+
 @pytest.mark.parametrize(
     "method,path,payload",
     [
