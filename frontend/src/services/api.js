@@ -1,5 +1,10 @@
 const runtimeEnv = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {};
-const API_BASE_URL = runtimeEnv.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const isLocalHost =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const API_BASE_URL =
+  runtimeEnv.VITE_API_BASE_URL ||
+  (isLocalHost ? 'http://127.0.0.1:8000' : '');
 const USE_MOCK_AI = runtimeEnv.VITE_USE_MOCK_AI === 'true';
 const AUTH_TOKEN_KEY = 'codementor-ai-auth-token';
 
@@ -266,6 +271,10 @@ async function parseJsonResponse(response) {
 }
 
 async function request(path, options = {}, { auth = true } = {}) {
+  if (!API_BASE_URL) {
+    throw new Error('Backend URL is not configured for this deployment.');
+  }
+
   if (auth && !authToken) {
     throw new AuthError();
   }
