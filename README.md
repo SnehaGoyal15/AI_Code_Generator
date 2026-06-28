@@ -1,5 +1,16 @@
 # CodeMentor AI
 
+![React](https://img.shields.io/badge/Frontend-React-blue)
+![FastAPI](https://img.shields.io/badge/Backend-FastAPI-green)
+![MongoDB](https://img.shields.io/badge/Database-MongoDB-success)
+![JWT](https://img.shields.io/badge/Auth-JWT-orange)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
+🌐 **Live Demo:** https://ai-powered-code-generator-virid.vercel.app/
+
+CodeMentor AI is a full-stack academic project...
+# CodeMentor AI
+
 CodeMentor AI is a full-stack academic project that acts as an AI-assisted coding mentor. It helps users generate code, explain code, debug code, optimize solutions, review code quality, generate documentation, and maintain personal coding history through a secure web workspace.
 
 ## 1. Project Objective
